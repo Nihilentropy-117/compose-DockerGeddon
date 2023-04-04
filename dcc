@@ -1,0 +1,63 @@
+#!/bin/bash
+
+path_dir="."
+
+# Check if up
+check_docker_status() {
+    local file="$1"
+    local status_line=$(docker-compose -f "$file" ps --services --filter "status=running" 2>/dev/null)
+    if [ -z "$status_line" ]; then
+        echo "down"
+    else
+        echo "up"
+    fi
+}
+
+# Find .yaml
+compose_files=($(find "$path_dir" -type f -iname "*.yaml"))
+if [ ${#compose_files[@]} -eq 0 ]; then
+    echo "Can't find .yaml files here"
+    exit 0
+fi
+
+# List status
+echo "Found files:"
+for i in "${!compose_files[@]}"; do
+    status=$(check_docker_status "${compose_files[i]}")
+    echo "$((i+1)). ${compose_files[i]} [Stack is $status]"
+done
+
+echo "Enter Files(1 || 1,3 | a = all), q=quit"
+read -r choice
+
+# input
+if [ "$choice" == "q" ]; then
+    exit 0
+elif [ "$choice" == "a" ]; then
+    selected_files=("${compose_files[@]}")
+else
+    IFS=',' read -ra selected_indices <<< "$choice"
+    for index in "${selected_indices[@]}"; do
+        adjusted_index=$((index-1))
+        if [ $adjusted_index -lt 0 ] || [ $adjusted_index -ge ${#compose_files[@]} ]; then
+            echo "Nope"
+            exit 1
+        fi
+        selected_files+=("${compose_files[$adjusted_index]}")
+    done
+fi
+
+echo "Do What? (up || down"
+read action
+
+# Validate
+if [ "$action" != "up" ] && [ "$action" != "down" ]; then
+    echo "Nope"
+    exit 1
+fi
+
+# Do the thing
+for file in "${selected_files[@]}"; do
+    echo "'docker-compose -f $file $action' -d"
+    docker-compose -f "$file" "$action" -d
+done
