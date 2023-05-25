@@ -13,12 +13,13 @@ check_docker_status() {
     fi
 }
 
-# Find .yaml
-compose_files=($(find "$path_dir" -type f -iname "*.yaml"))
+# Find .yaml and .yml
+compose_files=($(find "$path_dir" -type f \( -iname "*.yaml" -o -iname "*.yml" \)))
 if [ ${#compose_files[@]} -eq 0 ]; then
-    echo "Can't find .yaml files here"
+    echo "Can't find .yaml or .yml files here"
     exit 0
 fi
+
 
 # List status
 echo "Found files:"
