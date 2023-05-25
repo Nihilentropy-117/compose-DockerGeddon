@@ -58,6 +58,13 @@ fi
 
 # Do the thing
 for file in "${selected_files[@]}"; do
-    echo "'docker-compose -f $file $action' -d"
-    docker-compose -f "$file" "$action" -d
+    if [ "$action" == "up" ]; then
+        echo "'docker-compose -f $file $action' -d"
+        docker-compose -f "$file" "$action" -d
+    elif [ "$action" == "down" ]; then
+        echo "'docker-compose -f $file $action'"
+        docker-compose -f "$file" "$action"
+    fi
+done
+
 done
