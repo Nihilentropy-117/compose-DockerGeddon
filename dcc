@@ -2,30 +2,36 @@
 
 path_dir="."
 
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 # Check if up
 check_docker_status() {
     local file="$1"
     local status_line=$(docker-compose -f "$file" ps --services --filter "status=running" 2>/dev/null)
     if [ -z "$status_line" ]; then
-        echo "down"
+        echo -e "${RED}down${NC}"
     else
-        echo "up"
+        echo -e "${GREEN}up${NC}"
     fi
 }
 
-# Find .yaml and .yml
-compose_files=($(find "$path_dir" -type f \( -iname "*.yaml" -o -iname "*.yml" \)))
+# Find docker-compose.yaml or docker-compose.yml in all immediate subdirectories
+compose_files=($(find . -maxdepth 2 -type f \( -name "docker-compose.yaml" -o -name "docker-compose.yml" \)))
+
 if [ ${#compose_files[@]} -eq 0 ]; then
-    echo "Can't find .yaml or .yml files here"
+    echo -e "${RED}Can't find docker-compose.yaml or docker-compose.yml files in any subdirectories.${NC}"
     exit 0
 fi
-
 
 # List status
 echo "Found files:"
 for i in "${!compose_files[@]}"; do
     status=$(check_docker_status "${compose_files[i]}")
-    echo "$((i+1)). ${compose_files[i]} [Stack is $status]"
+    dirname=$(basename `dirname ${compose_files[i]}`)
+    printf "%-3s %-40s %-20s\n" "$((i+1))." "${dirname}" "[Stack is $status]"
 done
 
 echo "Enter Files(1 || 1,3 | a = all), q=quit"
@@ -41,31 +47,33 @@ else
     for index in "${selected_indices[@]}"; do
         adjusted_index=$((index-1))
         if [ $adjusted_index -lt 0 ] || [ $adjusted_index -ge ${#compose_files[@]} ]; then
-            echo "Nope"
+            echo -e "${RED}Invalid choice${NC}"
             exit 1
         fi
         selected_files+=("${compose_files[$adjusted_index]}")
     done
 fi
 
-echo "Do What? (up || down"
+echo "Do What? (u = up || d = down)"
 read action
 
-# Validate
-if [ "$action" != "up" ] && [ "$action" != "down" ]; then
-    echo "Nope"
+# Validate and map to full commands
+if [ "$action" == "u" ]; then
+    action="up"
+elif [ "$action" == "d" ]; then
+    action="down"
+else
+    echo -e "${RED}Invalid action${NC}"
     exit 1
 fi
 
 # Do the thing
 for file in "${selected_files[@]}"; do
     if [ "$action" == "up" ]; then
-        echo "'docker-compose -f $file $action' -d"
-        docker-compose -f "$file" "$action" -d
+        echo -e "${GREEN}docker-compose -f $file up -d${NC}"
+        docker-compose -f "$file" up -d
     elif [ "$action" == "down" ]; then
-        echo "'docker-compose -f $file $action'"
-        docker-compose -f "$file" "$action"
+        echo -e "${RED}docker-compose -f $file down${NC}"
+        docker-compose -f "$file" down
     fi
-done
-
 done
